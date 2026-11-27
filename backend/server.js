@@ -116,7 +116,7 @@ app.get("/api/candidats/recherche", verifierToken, async (req, res) => {
 
 app.post("/api/candidats", verifierToken, async(req, res)=>{
     try {
-        const {nom_prenoms, telephone, email, poste_recherche, niveau_etudes} = req.body;
+        const {nom_prenoms, telephone, email, poste_recherche, niveau_etudes, statut} = req.body;
         if (!nom_prenoms || !telephone || !email || !poste_recherche || !niveau_etudes){
            return res.status(400).json({message: "Veuiller remplir les champs obligatoires"});
         }
@@ -134,22 +134,45 @@ app.post("/api/candidats", verifierToken, async(req, res)=>{
                 message: "Le numéro de téléphone doit contenir uniquement des chiffres"
             });
         }
+
+        // Vérifier qu'un candidat avec cet email n'existe pas déjà
+        const emailExistant = await pool.query(
+            "SELECT id FROM candidats WHERE email = $1",
+            [email]
+        );
+        if (emailExistant.rows.length > 0) {
+            return res.status(409).json({
+                message: "Un candidat avec cet email existe déjà"
+            });
+        }
+
+        const statutsAutorises = [
+            "candidature reçue", "présélectionné", "convoqué",
+            "test effectué", "retenu", "non retenu"
+        ];
+        // Si statut fourni et invalide → erreur. Sinon on force "candidature reçue"
+        const statutFinal = statut && statutsAutorises.includes(statut)
+            ? statut
+            : "candidature reçue";
+
         const result = await pool.query(`
             INSERT INTO candidats(
             nom_prenoms,
             telephone,
             email,
             poste_recherche,
-            niveau_etudes
+            niveau_etudes,
+            statut
             )
-            VALUES($1, $2, $3, $4, $5)
+            VALUES($1, $2, $3, $4, $5, $6)
             RETURNING *
        `,[
             nom_prenoms,
             telephone,
             email,
             poste_recherche,
-            niveau_etudes
+            niveau_etudes,
+            statutFinal
         ]);
        res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -188,6 +211,17 @@ app.put("/api/candidats/:id", verifierToken, async (req, res) => {
         if (!statutsAutorises.includes(statut)) {
             return res.status(400).json({
                 message: "Statut invalide"
+            });
+        }
+
+        // Vérifier qu'aucun AUTRE candidat n'utilise déjà cet email
+        const emailExistant = await pool.query(
+            "SELECT id FROM candidats WHERE email = $1 AND id != $2",
+            [email, id]
+        );
+        if (emailExistant.rows.length > 0) {
+            return res.status(409).json({
+                message: "Un autre candidat utilise déjà cet email"
             });
         }
         const result = await pool.query(`

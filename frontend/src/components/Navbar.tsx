@@ -15,9 +15,9 @@ function Navbar() {
     return (
         <nav style={styles.nav}>
 
-            {/* Logo / Nom de l'application */}
+            {/* Nom de l'application */}
             <div style={styles.logo}>
-                <span style={styles.logoTexte}>BEZOK BTP</span>
+                <span style={styles.logoTexte}>BEZOjK BTP</span>
                 <span style={styles.logoSous}>Service RH</span>
             </div>
 

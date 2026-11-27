@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Candidats from "./pages/Candidats";
 import PrivateRoute from "./components/PrivateRoute";
@@ -29,6 +30,9 @@ function App() {
 
                 {/* Page de connexion — publique */}
                 <Route path="/login" element={<Login />} />
+
+                {/* Page d'inscription — publique */}
+                <Route path="/register" element={<Register />} />
 
                 {/* Pages internes — protégées par PrivateRoute */}
                 <Route

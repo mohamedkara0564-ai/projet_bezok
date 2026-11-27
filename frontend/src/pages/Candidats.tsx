@@ -1,367 +1,291 @@
 import { useEffect, useState } from "react";
 import type { Candidat } from "../types/candidat";
 import {
-    getCandidats,
-    rechercherParNom,
-    filtrerParStatut,
-    filtrerParPoste,
-    filtrerCombine,
-    supprimerCandidat
+    getCandidats, rechercherParNom,
+    filtrerParStatut, filtrerParPoste,
+    filtrerCombine, supprimerCandidat
 } from "../services/candidatService";
 import CandidatTable from "../components/CandidatTable";
 import CandidatForm from "../components/CandidatForm";
+import Modal from "../components/Modal";
 
-// Statuts autorisés — identiques à ceux du backend
 const STATUTS = [
-    "candidature reçue",
-    "présélectionné",
-    "convoqué",
-    "test effectué",
-    "retenu",
-    "non retenu"
+    "candidature reçue", "présélectionné", "convoqué",
+    "test effectué", "retenu", "non retenu"
 ];
 
+// ── Icônes ────────────────────────────────────────────────────
+const IcoFiltre = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+    </svg>
+);
+const IcoRecherche = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+);
+
 function Candidats() {
-    const [candidats, setCandidats] = useState<Candidat[]>([]);
-    const [chargement, setChargement] = useState(false);
-    const [erreur, setErreur] = useState("");
+    const [candidats, setCandidats]                   = useState<Candidat[]>([]);
+    const [chargement, setChargement]                 = useState(false);
+    const [erreur, setErreur]                         = useState("");
+    const [recherche, setRecherche]                   = useState("");
+    const [filtreStatut, setFiltreStatut]             = useState("");
+    const [filtrePoste, setFiltrePoste]               = useState("");
+    const [page, setPage]                             = useState(1);
+    const parPage = 8;
 
-    // États des filtres
-    const [recherche, setRecherche] = useState("");
-    const [filtreStatut, setFiltreStatut] = useState("");
-    const [filtrePoste, setFiltrePoste] = useState("");
+    // ── États des modales ─────────────────────────────────────
+    // null = fermée | true = modale ajout ouverte | Candidat = modale modif ouverte
+    const [modaleAjout, setModaleAjout]               = useState(false);
+    const [candidatAModifier, setCandidatAModifier]   = useState<Candidat | null>(null);
 
-    // Afficher ou cacher le formulaire d'ajout
-    const [afficherFormulaire, setAfficherFormulaire] = useState(false);
-
-    // Candidat en cours de modification (null = aucun)
-    const [candidatAModifier, setCandidatAModifier] = useState<Candidat | null>(null);
-
-    // Chargement initial — liste complète
-    useEffect(() => {
-        chargerTous();
-    }, []);
+    useEffect(() => { chargerTous(); }, []);
 
     async function chargerTous() {
-        setChargement(true);
-        setErreur("");
-        try {
-            const data = await getCandidats();
-            setCandidats(data);
-        } catch (error) {
-            setErreur("Impossible de charger les candidats.");
-            console.error(error);
-        } finally {
-            setChargement(false);
-        }
+        setChargement(true); setErreur("");
+        try { setCandidats(await getCandidats()); }
+        catch { setErreur("Impossible de charger les candidats."); }
+        finally { setChargement(false); }
     }
 
-    // ── Logique de recherche / filtrage ──────────────────────
-    // Appelée quand on clique sur "Rechercher"
     async function handleRechercher() {
-        setChargement(true);
-        setErreur("");
-
+        setChargement(true); setErreur(""); setPage(1);
         try {
-            let resultats: Candidat[];
-
-            const nomSaisi = recherche.trim();
-            const posteSaisi = filtrePoste.trim();
-
-            if (nomSaisi) {
-                // Priorité à la recherche par nom
-                resultats = await rechercherParNom(nomSaisi);
-
-            } else if (posteSaisi && filtreStatut) {
-                // Filtre combiné poste + statut
-                resultats = await filtrerCombine(posteSaisi, filtreStatut);
-
-            } else if (filtreStatut) {
-                // Filtre par statut seul
-                resultats = await filtrerParStatut(filtreStatut);
-
-            } else if (posteSaisi) {
-                // Filtre par poste seul
-                resultats = await filtrerParPoste(posteSaisi);
-
-            } else {
-                // Aucun filtre → liste complète
-                resultats = await getCandidats();
-            }
-
-            setCandidats(resultats);
-
-        } catch (error) {
-            setErreur(
-                error instanceof Error ? error.message : "Erreur lors de la recherche."
-            );
-        } finally {
-            setChargement(false);
-        }
+            const nom = recherche.trim(), poste = filtrePoste.trim();
+            let res: Candidat[];
+            if (nom)                        res = await rechercherParNom(nom);
+            else if (poste && filtreStatut) res = await filtrerCombine(poste, filtreStatut);
+            else if (filtreStatut)          res = await filtrerParStatut(filtreStatut);
+            else if (poste)                 res = await filtrerParPoste(poste);
+            else                            res = await getCandidats();
+            setCandidats(res);
+        } catch (e) {
+            setErreur(e instanceof Error ? e.message : "Erreur de recherche.");
+        } finally { setChargement(false); }
     }
 
-    // Réinitialise tous les filtres et recharge la liste complète
     function handleReinitialiser() {
-        setRecherche("");
-        setFiltreStatut("");
-        setFiltrePoste("");
+        setRecherche(""); setFiltreStatut(""); setFiltrePoste(""); setPage(1);
         chargerTous();
     }
 
-    // ── Suppression avec confirmation ────────────────────────
     async function handleSupprimer(id: number) {
-        const confirme = window.confirm("Confirmer la suppression de ce candidat ?");
-        if (!confirme) return;
-
+        if (!window.confirm("Confirmer la suppression de ce candidat ?")) return;
         try {
             await supprimerCandidat(id);
-            // On retire le candidat de la liste sans recharger toute la page
-            setCandidats((prev) => prev.filter((c) => c.id !== id));
-        } catch (error) {
-            setErreur(
-                error instanceof Error ? error.message : "Erreur lors de la suppression."
-            );
+            setCandidats(prev => prev.filter(c => c.id !== id));
+        } catch (e) {
+            setErreur(e instanceof Error ? e.message : "Erreur suppression.");
         }
     }
 
-    // ── Ajout d'un candidat ──────────────────────────────────
+    // Après ajout : on ajoute en tête de liste et on ferme la modale
     function handleAjout(nouveau: Candidat) {
-        setCandidats((prev) => [nouveau, ...prev]);
-        setAfficherFormulaire(false);
+        setCandidats(prev => [nouveau, ...prev]);
+        setModaleAjout(false);
     }
 
+    // Après modification : on met à jour la ligne et on ferme la modale
+    function handleModificationTerminee(maj: Candidat) {
+        setCandidats(prev => prev.map(c => c.id === maj.id ? maj : c));
+        setCandidatAModifier(null);
+    }
+
+    // Pagination
+    const totalPages = Math.ceil(candidats.length / parPage);
+    const candidatsPage = candidats.slice((page - 1) * parPage, page * parPage);
+
     return (
-        <div>
-            {/* En-tête */}
-            <div style={styles.entete}>
-                <h1 style={styles.titre}>Gestion des candidatures</h1>
-                <button
-                    onClick={() => {
-                        setAfficherFormulaire(!afficherFormulaire);
-                        setCandidatAModifier(null);
-                    }}
-                    style={styles.boutonAjouter}
-                >
-                    {afficherFormulaire ? "✕ Annuler" : "+ Ajouter un candidat"}
+        <div style={s.page}>
+
+            {/* ── En-tête page ── */}
+            <div style={s.entete}>
+                <div>
+                    <h1 style={s.titre}>Candidatures</h1>
+                    <p style={s.sousTitre}>
+                        {candidats.length} candidat{candidats.length !== 1 ? "s" : ""} enregistré{candidats.length !== 1 ? "s" : ""}
+                    </p>
+                </div>
+                {/* Bouton qui ouvre la modale d'ajout */}
+                <button onClick={() => setModaleAjout(true)} style={s.boutonAjouter}>
+                    + Ajouter un candidat
                 </button>
             </div>
 
-            {/* Formulaire d'ajout */}
-            {afficherFormulaire && (
-                <div style={styles.section}>
-                    <CandidatForm onAjout={handleAjout} />
-                </div>
-            )}
+            {/* ── Tableau avec filtres intégrés ── */}
+            <div style={s.carteBlanche}>
 
-            {/* Barre de recherche et filtres */}
-            <div style={styles.filtresZone}>
-                <h2 style={styles.sousTitre}>Recherche et filtres</h2>
+                {/* Header du tableau */}
+                <div style={s.tableauHeader}>
+                    <h2 style={s.tableauTitre}>≡ Liste des candidatures</h2>
 
-                <div style={styles.filtresGrille}>
-
-                    {/* Recherche par nom */}
-                    <div style={styles.champ}>
-                        <label style={styles.label}>Rechercher par nom</label>
-                        <input
-                            type="text"
-                            value={recherche}
-                            onChange={(e) => setRecherche(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleRechercher()}
-                            placeholder="Ex : Kouassi"
-                            style={styles.input}
-                        />
-                    </div>
-
-                    {/* Filtre par poste */}
-                    <div style={styles.champ}>
-                        <label style={styles.label}>Filtrer par poste</label>
-                        <input
-                            type="text"
-                            value={filtrePoste}
-                            onChange={(e) => setFiltrePoste(e.target.value)}
-                            placeholder="Ex : Développeur web"
-                            style={styles.input}
-                        />
-                    </div>
-
-                    {/* Filtre par statut */}
-                    <div style={styles.champ}>
-                        <label style={styles.label}>Filtrer par statut</label>
-                        <select
-                            value={filtreStatut}
-                            onChange={(e) => setFiltreStatut(e.target.value)}
-                            style={styles.input}
-                        >
-                            <option value="">— Tous les statuts —</option>
-                            {STATUTS.map((s) => (
-                                <option key={s} value={s}>{s}</option>
+                    <div style={s.filtresLigne}>
+                        {/* Filtre poste dynamique */}
+                        <select value={filtrePoste} onChange={e => setFiltrePoste(e.target.value)} style={s.select}>
+                            <option value="">Tous les postes</option>
+                            {[...new Set(candidats.map(c => c.poste_recherche))].map(p => (
+                                <option key={p} value={p}>{p}</option>
                             ))}
                         </select>
+
+                        {/* Filtre statut */}
+                        <select value={filtreStatut} onChange={e => setFiltreStatut(e.target.value)} style={s.select}>
+                            <option value="">Tous les statuts</option>
+                            {STATUTS.map(st => <option key={st} value={st}>{st}</option>)}
+                        </select>
+
+                        {/* Recherche par nom */}
+                        <div style={s.rechercheZone}>
+                            <IcoRecherche />
+                            <input
+                                type="text"
+                                value={recherche}
+                                onChange={e => setRecherche(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && handleRechercher()}
+                                placeholder="Rechercher par nom..."
+                                style={s.rechercheInput}
+                            />
+                        </div>
+
+                        <button onClick={handleRechercher} style={s.btnFiltrer}>
+                            <IcoFiltre /> Filtrer
+                        </button>
+                        <button onClick={handleReinitialiser} style={s.btnReset}>↺</button>
                     </div>
-
                 </div>
 
-                {/* Boutons d'action */}
-                <div style={styles.boutonsFiltres}>
-                    <button onClick={handleRechercher} style={styles.boutonRechercher}>
-                        🔍 Rechercher
-                    </button>
-                    <button onClick={handleReinitialiser} style={styles.boutonReinitialiser}>
-                        ↺ Réinitialiser
-                    </button>
-                </div>
+                {/* Messages */}
+                {erreur && <div style={s.erreur}>⚠ {erreur}</div>}
+                {chargement && <p style={s.chargement}>Chargement...</p>}
+
+                {/* Tableau */}
+                {!chargement && (
+                    <CandidatTable
+                        candidats={candidatsPage}
+                        onSupprimer={handleSupprimer}
+                        // Clic Modifier → ouvre la modale de modification
+                        onModifier={c => setCandidatAModifier(c)}
+                    />
+                )}
+
+                {/* Pagination */}
+                {!chargement && candidats.length > parPage && (
+                    <div style={s.pagination}>
+                        <span style={s.paginationInfo}>
+                            Affichage de {(page - 1) * parPage + 1} à {Math.min(page * parPage, candidats.length)} sur {candidats.length} entrées
+                        </span>
+                        <div style={s.paginationBtns}>
+                            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={s.pagBtn}>‹</button>
+                            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(n => (
+                                <button key={n} onClick={() => setPage(n)} style={{ ...s.pagBtn, ...(page === n ? s.pagBtnActif : {}) }}>{n}</button>
+                            ))}
+                            {totalPages > 5 && <span style={s.pagBtn}>...</span>}
+                            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={s.pagBtn}>›</button>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* Messages */}
-            {erreur && <p style={styles.erreur}>⚠ {erreur}</p>}
-            {chargement && <p style={styles.info}>Chargement...</p>}
-
-            {/* Résultat */}
-            {!chargement && (
-                <div style={styles.section}>
-                    <p style={styles.compteur}>
-                        {candidats.length} candidat{candidats.length !== 1 ? "s" : ""} trouvé{candidats.length !== 1 ? "s" : ""}
-                    </p>
-                    <CandidatTable
-                        candidats={candidats}
-                        onSupprimer={handleSupprimer}
-                        onModifier={(candidat) => {
-                            setCandidatAModifier(candidat);
-                            setAfficherFormulaire(false);
-                        }}
+            {/* ══ MODALE AJOUT ══════════════════════════════════════ */}
+            {modaleAjout && (
+                <Modal
+                    titre="➕ Ajouter un candidat"
+                    onFermer={() => setModaleAjout(false)}
+                >
+                    <CandidatForm
+                        onAjout={handleAjout}
+                        onAnnuler={() => setModaleAjout(false)}
                     />
-                </div>
+                </Modal>
             )}
 
-            {/* Zone de modification — s'affiche sous le tableau */}
+            {/* ══ MODALE MODIFICATION ═══════════════════════════════ */}
             {candidatAModifier && (
-                <div style={styles.section}>
-                    <h2 style={styles.sousTitre}>Modifier le candidat</h2>
+                <Modal
+                    titre={`✏ Modifier — ${candidatAModifier.nom_prenoms}`}
+                    onFermer={() => setCandidatAModifier(null)}
+                >
                     <CandidatForm
                         onAjout={() => {}}
                         candidatAModifier={candidatAModifier}
-                        onModificationTerminee={(candidatMaj) => {
-                            setCandidats((prev) =>
-                                prev.map((c) => (c.id === candidatMaj.id ? candidatMaj : c))
-                            );
-                            setCandidatAModifier(null);
-                        }}
+                        onModificationTerminee={handleModificationTerminee}
                         onAnnuler={() => setCandidatAModifier(null)}
                     />
-                </div>
+                </Modal>
             )}
+
         </div>
     );
 }
 
 // ─── Styles ──────────────────────────────────────────────────
-const styles: Record<string, React.CSSProperties> = {
-    entete: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "1.5rem"
-    },
-    titre: {
-        fontSize: "1.6rem",
-        fontWeight: "bold",
-        color: "#1a3c6e",
-        margin: 0
-    },
-    sousTitre: {
-        fontSize: "1rem",
-        fontWeight: "600",
-        color: "#1a3c6e",
-        marginBottom: "1rem"
-    },
-    section: {
-        backgroundColor: "#ffffff",
-        borderRadius: "8px",
-        padding: "1.5rem",
-        marginBottom: "1.5rem",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.07)"
-    },
-    filtresZone: {
-        backgroundColor: "#ffffff",
-        borderRadius: "8px",
-        padding: "1.5rem",
-        marginBottom: "1.5rem",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.07)"
-    },
-    filtresGrille: {
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: "1rem",
-        marginBottom: "1rem"
-    },
-    champ: {
-        display: "flex",
-        flexDirection: "column",
-        gap: "0.3rem"
-    },
-    label: {
-        fontSize: "0.85rem",
-        fontWeight: "600",
-        color: "#444"
-    },
-    input: {
-        padding: "0.6rem 0.8rem",
-        border: "1px solid #ccc",
-        borderRadius: "6px",
-        fontSize: "0.9rem"
-    },
-    boutonsFiltres: {
-        display: "flex",
-        gap: "0.75rem",
-        marginTop: "0.5rem"
-    },
+const s: Record<string, React.CSSProperties> = {
+    page: { display: "flex", flexDirection: "column", gap: "1.25rem", fontFamily: "Segoe UI, Arial, sans-serif" },
+    entete: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+    titre: { fontSize: "1.6rem", fontWeight: "bold", color: "#0f2044", margin: 0 },
+    sousTitre: { color: "#64748b", fontSize: "0.85rem", marginTop: "0.2rem", marginBottom: 0 },
     boutonAjouter: {
-        backgroundColor: "#1a3c6e",
-        color: "#fff",
-        border: "none",
-        borderRadius: "6px",
-        padding: "0.6rem 1.2rem",
-        fontWeight: "600",
-        cursor: "pointer",
-        fontSize: "0.9rem"
+        backgroundColor: "#2563eb", color: "#fff", border: "none",
+        borderRadius: "8px", padding: "0.6rem 1.2rem",
+        fontWeight: "600", fontSize: "0.9rem", cursor: "pointer"
     },
-    boutonRechercher: {
-        backgroundColor: "#2980b9",
-        color: "#fff",
-        border: "none",
-        borderRadius: "6px",
-        padding: "0.6rem 1.2rem",
-        fontWeight: "600",
-        cursor: "pointer",
-        fontSize: "0.9rem"
+    carteBlanche: {
+        backgroundColor: "#fff", borderRadius: "10px",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.07)", overflow: "hidden"
     },
-    boutonReinitialiser: {
-        backgroundColor: "#ecf0f1",
-        color: "#333",
-        border: "1px solid #ccc",
-        borderRadius: "6px",
-        padding: "0.6rem 1.2rem",
-        fontWeight: "600",
-        cursor: "pointer",
-        fontSize: "0.9rem"
+    tableauHeader: {
+        display: "flex", alignItems: "center", flexWrap: "wrap",
+        gap: "0.75rem", padding: "1rem 1.25rem",
+        borderBottom: "1px solid #f1f5f9"
     },
-    compteur: {
-        color: "#666",
-        fontSize: "0.9rem",
-        marginBottom: "1rem"
+    tableauTitre: { margin: 0, fontSize: "1rem", fontWeight: "700", color: "#0f2044", marginRight: "auto" },
+    filtresLigne: { display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" },
+    select: {
+        padding: "0.45rem 0.75rem", border: "1px solid #e2e8f0",
+        borderRadius: "6px", fontSize: "0.82rem", color: "#334155",
+        backgroundColor: "#f8fafc", cursor: "pointer", outline: "none"
     },
+    rechercheZone: {
+        display: "flex", alignItems: "center", gap: "0.4rem",
+        border: "1px solid #e2e8f0", borderRadius: "6px",
+        padding: "0.4rem 0.75rem", backgroundColor: "#f8fafc"
+    },
+    rechercheInput: {
+        border: "none", outline: "none", backgroundColor: "transparent",
+        fontSize: "0.82rem", color: "#334155", width: "160px"
+    },
+    btnFiltrer: {
+        display: "flex", alignItems: "center", gap: "0.4rem",
+        backgroundColor: "#0f2044", color: "#fff", border: "none",
+        borderRadius: "6px", padding: "0.45rem 0.9rem",
+        fontSize: "0.82rem", fontWeight: "600", cursor: "pointer"
+    },
+    btnReset: {
+        backgroundColor: "#f1f5f9", color: "#555", border: "1px solid #e2e8f0",
+        borderRadius: "6px", padding: "0.45rem 0.6rem",
+        fontSize: "0.9rem", cursor: "pointer"
+    },
+    pagination: {
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        padding: "0.75rem 1.25rem", borderTop: "1px solid #f1f5f9"
+    },
+    paginationInfo: { fontSize: "0.8rem", color: "#94a3b8" },
+    paginationBtns: { display: "flex", gap: "0.3rem" },
+    pagBtn: {
+        minWidth: "30px", height: "30px", padding: "0 0.4rem",
+        border: "1px solid #e2e8f0", borderRadius: "6px",
+        backgroundColor: "#fff", fontSize: "0.82rem",
+        cursor: "pointer", color: "#555",
+        display: "flex", alignItems: "center", justifyContent: "center"
+    },
+    pagBtnActif: { backgroundColor: "#0f2044", color: "#fff", borderColor: "#0f2044" },
     erreur: {
-        color: "#c0392b",
-        backgroundColor: "#fdecea",
-        border: "1px solid #f5c6c6",
-        borderRadius: "6px",
-        padding: "0.75rem 1rem",
-        marginBottom: "1rem"
+        margin: "1rem 1.25rem", backgroundColor: "#fef2f2", color: "#b91c1c",
+        border: "1px solid #fca5a5", borderRadius: "6px", padding: "0.75rem 1rem"
     },
-    info: {
-        color: "#666",
-        fontStyle: "italic"
-    }
+    chargement: { textAlign: "center", padding: "2rem", color: "#94a3b8", fontStyle: "italic" }
 };
 
 export default Candidats;

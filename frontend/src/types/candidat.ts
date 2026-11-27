@@ -6,4 +6,6 @@ export interface Candidat {
     poste_recherche: string;
     niveau_etudes: string;
     statut: string;
+    date_candidature?: string;  // optionnel — peut être absent selon l'enregistrement
+    created_at?: string;        // optionnel — date de création technique
 }

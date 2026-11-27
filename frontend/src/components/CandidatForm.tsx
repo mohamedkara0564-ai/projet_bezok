@@ -132,7 +132,7 @@ function CandidatForm({ onAjout, candidatAModifier, onModificationTerminee, onAn
     return (
         <div>
             <h2 style={styles.titre}>
-                {modeModification ? "✏ Modifier le candidat" : "➕ Ajouter un candidat"}
+                {modeModification && "✏ Modifier le candidat"}
             </h2>
 
             {/* Message d'erreur */}
