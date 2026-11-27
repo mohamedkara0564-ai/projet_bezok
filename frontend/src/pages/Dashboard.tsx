@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { getStatistiques, getCandidats } from "../services/candidatService";
-import { useAuth } from "../context/AuthContext";
 import type { Candidat } from "../types/candidat";
 
 interface Statistiques {
@@ -104,9 +103,8 @@ function CarteStat({ icone, label, valeur, couleur, bordure }: {
 
 // ── Page Dashboard ────────────────────────────────────────────
 function Dashboard() {
-    const { utilisateur } = useAuth();
     const navigate = useNavigate();
-    const location = useLocation(); // écoute les changements d'URL
+    const location = useLocation();
     const [stats, setStats]           = useState<Statistiques | null>(null);
     const [candidats, setCandidats]   = useState<Candidat[]>([]);
     const [erreur, setErreur]         = useState("");
@@ -149,9 +147,6 @@ function Dashboard() {
                     <div style={{ display: "flex", gap: "0.75rem" }}>
                         <button onClick={() => navigate("/candidats")} style={stylesD.heroBouton}>
                             + Nouvelle candidature
-                        </button>
-                        <button onClick={charger} style={stylesD.heroBoutonActualiser} title="Actualiser">
-                            ↺ Actualiser
                         </button>
                     </div>
                 </div>
