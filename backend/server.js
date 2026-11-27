@@ -116,7 +116,7 @@ app.get("/api/candidats/recherche", verifierToken, async (req, res) => {
 
 app.post("/api/candidats", verifierToken, async(req, res)=>{
     try {
-        const {nom_prenoms, telephone, email, poste_recherche, niveau_etudes, statut} = req.body;
+        const {nom_prenoms, telephone, email, poste_recherche, niveau_etudes, statut, date_candidature} = req.body;
         if (!nom_prenoms || !telephone || !email || !poste_recherche || !niveau_etudes){
            return res.status(400).json({message: "Veuiller remplir les champs obligatoires"});
         }
@@ -162,9 +162,10 @@ app.post("/api/candidats", verifierToken, async(req, res)=>{
             email,
             poste_recherche,
             niveau_etudes,
-            statut
+            statut,
+            date_candidature
             )
-            VALUES($1, $2, $3, $4, $5, $6)
+            VALUES($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
        `,[
             nom_prenoms,
@@ -172,7 +173,8 @@ app.post("/api/candidats", verifierToken, async(req, res)=>{
             email,
             poste_recherche,
             niveau_etudes,
-            statutFinal
+            statutFinal,
+            date_candidature || new Date()
         ]);
        res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -191,7 +193,8 @@ app.put("/api/candidats/:id", verifierToken, async (req, res) => {
             email,
             poste_recherche,
             niveau_etudes,
-            statut
+            statut,
+            date_candidature
         } = req.body;
 
         if (!nom_prenoms || !telephone || !email || !poste_recherche || !niveau_etudes || !statut) {
@@ -232,8 +235,9 @@ app.put("/api/candidats/:id", verifierToken, async (req, res) => {
                 email = $3,
                 poste_recherche = $4,
                 niveau_etudes = $5,
-                statut = $6
-            WHERE id = $7
+                statut = $6,
+                date_candidature = $7
+            WHERE id = $8
             RETURNING *
         `, [
             nom_prenoms,
@@ -242,6 +246,7 @@ app.put("/api/candidats/:id", verifierToken, async (req, res) => {
             poste_recherche,
             niveau_etudes,
             statut,
+            date_candidature || new Date(),
             id
         ]);
 

@@ -8,6 +8,7 @@ import {
 import CandidatTable from "../components/CandidatTable";
 import CandidatForm from "../components/CandidatForm";
 import Modal from "../components/Modal";
+import DossierCandidat from "../components/DossierCandidat";
 
 const STATUTS = [
     "candidature reçue", "présélectionné", "convoqué",
@@ -37,9 +38,9 @@ function Candidats() {
     const parPage = 8;
 
     // ── États des modales ─────────────────────────────────────
-    // null = fermée | true = modale ajout ouverte | Candidat = modale modif ouverte
     const [modaleAjout, setModaleAjout]               = useState(false);
     const [candidatAModifier, setCandidatAModifier]   = useState<Candidat | null>(null);
+    const [candidatAVoir, setCandidatAVoir]           = useState<Candidat | null>(null);
 
     useEffect(() => { chargerTous(); }, []);
 
@@ -165,8 +166,8 @@ function Candidats() {
                     <CandidatTable
                         candidats={candidatsPage}
                         onSupprimer={handleSupprimer}
-                        // Clic Modifier → ouvre la modale de modification
                         onModifier={c => setCandidatAModifier(c)}
+                        onVoir={c => setCandidatAVoir(c)}
                     />
                 )}
 
@@ -187,6 +188,22 @@ function Candidats() {
                     </div>
                 )}
             </div>
+
+            {/* ══ MODALE CONSULTATION ═══════════════════════════════ */}
+            {candidatAVoir && (
+                <Modal
+                    titre={`👁 Dossier — ${candidatAVoir.nom_prenoms}`}
+                    onFermer={() => setCandidatAVoir(null)}
+                >
+                    <DossierCandidat
+                        candidat={candidatAVoir}
+                        onModifier={(c) => {
+                            setCandidatAVoir(null);     // ferme la modale consultation
+                            setCandidatAModifier(c);    // ouvre la modale modification
+                        }}
+                    />
+                </Modal>
+            )}
 
             {/* ══ MODALE AJOUT ══════════════════════════════════════ */}
             {modaleAjout && (

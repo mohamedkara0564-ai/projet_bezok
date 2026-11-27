@@ -27,12 +27,15 @@ function CandidatForm({ onAjout, candidatAModifier, onModificationTerminee, onAn
     // Si candidatAModifier est fourni, on est en mode modification
     const modeModification = !!candidatAModifier;
 
-    const [nom_prenoms, setNom]           = useState("");
-    const [telephone, setTelephone]       = useState("");
-    const [email, setEmail]               = useState("");
-    const [poste_recherche, setPoste]     = useState("");
-    const [niveau_etudes, setNiveau]      = useState("");
-    const [statut, setStatut]             = useState("candidature reçue");
+    const [nom_prenoms, setNom]               = useState("");
+    const [telephone, setTelephone]           = useState("");
+    const [email, setEmail]                   = useState("");
+    const [poste_recherche, setPoste]         = useState("");
+    const [niveau_etudes, setNiveau]          = useState("");
+    const [statut, setStatut]                 = useState("candidature reçue");
+    const [date_candidature, setDateCand]     = useState(
+        new Date().toISOString().split("T")[0] // date du jour au format YYYY-MM-DD
+    );
 
     const [erreur, setErreur]             = useState("");
     const [succes, setSucces]             = useState(false);
@@ -49,30 +52,36 @@ function CandidatForm({ onAjout, candidatAModifier, onModificationTerminee, onAn
             setPoste(candidatAModifier.poste_recherche);
             setNiveau(candidatAModifier.niveau_etudes);
             setStatut(candidatAModifier.statut);
+            // Convertir la date ISO en YYYY-MM-DD pour le champ date
+            setDateCand(
+                candidatAModifier.date_candidature
+                    ? candidatAModifier.date_candidature.split("T")[0]
+                    : new Date().toISOString().split("T")[0]
+            );
         } else {
-            // Retour en mode ajout → on vide les champs
             setNom("");
             setTelephone("");
             setEmail("");
             setPoste("");
             setNiveau("");
             setStatut("candidature reçue");
+            setDateCand(new Date().toISOString().split("T")[0]);
         }
         setErreur("");
         setSucces(false);
     }, [candidatAModifier]);
 
-    // ── Validation côté client ────────────────────────────────
     function validerFormulaire(): string {
-        if (!nom_prenoms.trim())    return "Le nom et prénoms est obligatoire.";
-        if (!telephone.trim())      return "Le téléphone est obligatoire.";
+        if (!nom_prenoms.trim())     return "Le nom et prénoms est obligatoire.";
+        if (!telephone.trim())       return "Le téléphone est obligatoire.";
         if (!/^\+?[\d\s\-]{6,15}$/.test(telephone))
-                                    return "Format du téléphone invalide.";
-        if (!email.trim())          return "L'email est obligatoire.";
+                                     return "Format du téléphone invalide.";
+        if (!email.trim())           return "L'email est obligatoire.";
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-                                    return "Format de l'email invalide.";
+                                     return "Format de l'email invalide.";
         if (!poste_recherche.trim()) return "Le poste recherché est obligatoire.";
-        if (!niveau_etudes.trim())  return "Le niveau d'études est obligatoire.";
+        if (!niveau_etudes.trim())   return "Le niveau d'études est obligatoire.";
+        if (!date_candidature)       return "La date de candidature est obligatoire.";
         return "";
     }
 
@@ -91,12 +100,13 @@ function CandidatForm({ onAjout, candidatAModifier, onModificationTerminee, onAn
         setChargement(true);
 
         const donnees = {
-            nom_prenoms:    nom_prenoms.trim(),
-            telephone:      telephone.trim(),
-            email:          email.trim(),
-            poste_recherche: poste_recherche.trim(),
-            niveau_etudes:  niveau_etudes.trim(),
-            statut
+            nom_prenoms:      nom_prenoms.trim(),
+            telephone:        telephone.trim(),
+            email:            email.trim(),
+            poste_recherche:  poste_recherche.trim(),
+            niveau_etudes:    niveau_etudes.trim(),
+            statut,
+            date_candidature
         };
 
         try {
@@ -116,6 +126,7 @@ function CandidatForm({ onAjout, candidatAModifier, onModificationTerminee, onAn
                 setNom(""); setTelephone(""); setEmail("");
                 setPoste(""); setNiveau("");
                 setStatut("candidature reçue");
+                setDateCand(new Date().toISOString().split("T")[0]);
             }
 
         } catch (error) {
@@ -231,7 +242,22 @@ function CandidatForm({ onAjout, candidatAModifier, onModificationTerminee, onAn
                         />
                     </div>
 
-                    {/* Statut — visible dans les deux modes */}
+                    {/* Date de candidature */}
+                    <div style={styles.champ}>
+                        <label htmlFor="date_candidature" style={styles.label}>
+                            Date de candidature <span style={styles.obligatoire}>*</span>
+                        </label>
+                        <input
+                            id="date_candidature"
+                            type="date"
+                            value={date_candidature}
+                            onChange={(e) => setDateCand(e.target.value)}
+                            style={styles.input}
+                            required
+                        />
+                    </div>
+
+                    {/* Statut */}
                     <div style={styles.champ}>
                         <label htmlFor="statut" style={styles.label}>
                             Statut <span style={styles.obligatoire}>*</span>

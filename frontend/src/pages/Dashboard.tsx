@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { getStatistiques, getCandidats } from "../services/candidatService";
 import { useAuth } from "../context/AuthContext";
 import type { Candidat } from "../types/candidat";
@@ -106,24 +106,29 @@ function CarteStat({ icone, label, valeur, couleur, bordure }: {
 function Dashboard() {
     const { utilisateur } = useAuth();
     const navigate = useNavigate();
-    const [stats, setStats]       = useState<Statistiques | null>(null);
-    const [candidats, setCandidats] = useState<Candidat[]>([]);
-    const [erreur, setErreur]     = useState("");
-    const [page, setPage]         = useState(1);
+    const location = useLocation(); // écoute les changements d'URL
+    const [stats, setStats]           = useState<Statistiques | null>(null);
+    const [candidats, setCandidats]   = useState<Candidat[]>([]);
+    const [erreur, setErreur]         = useState("");
+    const [page, setPage]             = useState(1);
     const parPage = 5;
 
+    // Se déclenche à chaque fois que le Dashboard devient actif
+    // (montage initial + retour depuis une autre page)
     useEffect(() => {
-        async function charger() {
-            try {
-                const [s, c] = await Promise.all([getStatistiques(), getCandidats()]);
-                setStats(s);
-                setCandidats(c);
-            } catch {
-                setErreur("Impossible de charger les données.");
-            }
-        }
         charger();
-    }, []);
+    }, [location.pathname]);
+
+    async function charger() {
+        setErreur("");
+        try {
+            const [s, c] = await Promise.all([getStatistiques(), getCandidats()]);
+            setStats(s);
+            setCandidats(c);
+        } catch {
+            setErreur("Impossible de charger les données.");
+        }
+    }
 
     const totalPages = Math.ceil(candidats.length / parPage);
     const candidatsPage = candidats.slice((page - 1) * parPage, page * parPage);
