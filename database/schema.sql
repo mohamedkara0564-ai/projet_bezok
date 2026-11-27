@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS candidats (
 INSERT INTO users (nom, email, mot_de_passe) VALUES (
     'Admin BEZOK',
     'admin@bezok.com',
-    '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.'
+    '$2b$10$eSdLFOAeTJouUuwnqZApEusL0.Oa3cMyCh5eCUx8gs591OH8isLKi'
 ) ON CONFLICT (email) DO NOTHING;
 
 -- Candidats fictifs de démonstration

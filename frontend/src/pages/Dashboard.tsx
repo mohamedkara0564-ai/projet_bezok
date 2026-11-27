@@ -146,7 +146,14 @@ function Dashboard() {
                             <p style={stylesD.heroSous}>Suivi des candidatures – Groupe BEZOK</p>
                         </div>
                     </div>
-                    
+                    <div style={{ display: "flex", gap: "0.75rem" }}>
+                        <button onClick={() => navigate("/candidats")} style={stylesD.heroBouton}>
+                            + Nouvelle candidature
+                        </button>
+                        <button onClick={charger} style={stylesD.heroBoutonActualiser} title="Actualiser">
+                            ↺ Actualiser
+                        </button>
+                    </div>
                 </div>
                 {/* Décoration droite */}
                 <div style={stylesD.heroDeco}>
@@ -284,6 +291,17 @@ const stylesD: Record<string, React.CSSProperties> = {
         border: "none",
         borderRadius: "8px",
         padding: "0.6rem 1.2rem",
+        fontWeight: "600",
+        fontSize: "0.9rem",
+        cursor: "pointer",
+        alignSelf: "flex-start"
+    },
+    heroBoutonActualiser: {
+        backgroundColor: "rgba(255,255,255,0.15)",
+        color: "#fff",
+        border: "1px solid rgba(255,255,255,0.4)",
+        borderRadius: "8px",
+        padding: "0.6rem 1rem",
         fontWeight: "600",
         fontSize: "0.9rem",
         cursor: "pointer",

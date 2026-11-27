@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Candidat } from "../types/candidat";
 import {
-    getCandidats, rechercherParNom,
-    filtrerParStatut, filtrerParPoste,
-    filtrerCombine, supprimerCandidat
+    getCandidats, rechercherCandidats,
+    supprimerCandidat
 } from "../services/candidatService";
 import CandidatTable from "../components/CandidatTable";
 import CandidatForm from "../components/CandidatForm";
@@ -54,13 +53,11 @@ function Candidats() {
     async function handleRechercher() {
         setChargement(true); setErreur(""); setPage(1);
         try {
-            const nom = recherche.trim(), poste = filtrePoste.trim();
-            let res: Candidat[];
-            if (nom)                        res = await rechercherParNom(nom);
-            else if (poste && filtreStatut) res = await filtrerCombine(poste, filtreStatut);
-            else if (filtreStatut)          res = await filtrerParStatut(filtreStatut);
-            else if (poste)                 res = await filtrerParPoste(poste);
-            else                            res = await getCandidats();
+            const res = await rechercherCandidats({
+                nom: recherche,
+                poste: filtrePoste,
+                statut: filtreStatut
+            });
             setCandidats(res);
         } catch (e) {
             setErreur(e instanceof Error ? e.message : "Erreur de recherche.");

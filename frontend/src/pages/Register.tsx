@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { API_URL } from "../config";
 
 function Register() {
     const [nom, setNom]               = useState("");
@@ -36,7 +37,7 @@ function Register() {
 
         setChargement(true);
         try {
-            const response = await fetch("http://localhost:5000/api/auth/inscription", {
+            const response = await fetch(`${API_URL}/api/auth/inscription`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ nom: nom.trim(), email: email.trim(), mot_de_passe: motDePasse })

@@ -24,6 +24,12 @@ function couleurAvatar(nom: string): string {
 }
 
 // ── Icônes SVG ────────────────────────────────────────────────
+const IcoVoir = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+        <circle cx="12" cy="12" r="3"/>
+    </svg>
+);
 
 const IcoEditer = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -39,7 +45,7 @@ const IcoSupprimer = () => (
     </svg>
 );
 
-function CandidatTable({ candidats, onSupprimer, onModifier, }: Props) {
+function CandidatTable({ candidats, onSupprimer, onModifier, onVoir }: Props) {
     return (
         <div style={styles.conteneur}>
             <table style={styles.table}>
@@ -99,7 +105,16 @@ function CandidatTable({ candidats, onSupprimer, onModifier, }: Props) {
                                     {/* Actions */}
                                     <td style={{ ...styles.td, textAlign: "center" }}>
                                         <div style={styles.actions}>
-                                            
+                                            {/* Consulter */}
+                                            {onVoir && (
+                                                <button
+                                                    onClick={() => onVoir(c)}
+                                                    style={{ ...styles.icoBtn, color: "#555" }}
+                                                    title="Consulter le dossier"
+                                                >
+                                                    <IcoVoir />
+                                                </button>
+                                            )}
                                             {/* Modifier */}
                                             <button
                                                 onClick={() => onModifier(c)}

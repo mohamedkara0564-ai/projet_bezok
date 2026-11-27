@@ -1,4 +1,6 @@
-const API_URL = "http://localhost:5000/api/auth";
+import { API_URL } from "../config";
+
+const BASE_AUTH = `${API_URL}/api/auth`;
 
 // Clé utilisée pour stocker le token dans le localStorage
 const TOKEN_KEY = "bezok_token";
@@ -10,7 +12,7 @@ const USER_KEY = "bezok_user";
 // et le stocke dans le localStorage
 // ─────────────────────────────────────────────────────────────
 export async function connexion(email: string, mot_de_passe: string) {
-    const response = await fetch(`${API_URL}/connexion`, {
+    const response = await fetch(`${BASE_AUTH}/connexion`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"

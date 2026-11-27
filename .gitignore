@@ -12,3 +12,6 @@ frontend/dist/
 # Logs
 *.log
 npm-debug.log*
+
+# Sujet d'examen — ne pas versionner
+INFO-02.pdf

@@ -1,91 +1,81 @@
 import type { Candidat } from "../types/candidat";
-import { getToken } from "./authService";
+import { API_URL } from "../config";
+import { fetchAuth } from "./fetchAuth";
 
-const API_URL = "http://localhost:5000/api/candidats";
-
-// ─────────────────────────────────────────────────────────────
-// headersAvecToken()
-// Construit les headers HTTP avec le token JWT
-// Toutes les requêtes vers /api/candidats en ont besoin
-// car le backend vérifie le token sur chaque route
-// ─────────────────────────────────────────────────────────────
-function headersAvecToken(): HeadersInit {
-    const token = getToken();
-    return {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-    };
-}
+const BASE = `${API_URL}/api/candidats`;
 
 // ─────────────────────────────────────────────────────────────
 // getCandidats()
-// Récupère la liste complète des candidats
+// Récupère tous les candidats, avec filtres optionnels
+// Si aucun filtre → renvoie toute la liste
 // ─────────────────────────────────────────────────────────────
 export async function getCandidats(): Promise<Candidat[]> {
-    const response = await fetch(API_URL, {
-        headers: headersAvecToken()
+    const response = await fetchAuth(BASE);
+    if (!response.ok) throw new Error("Erreur lors de la récupération des candidats");
+    return response.json();
+}
+
+// ─────────────────────────────────────────────────────────────
+// rechercherCandidats()
+// Remplace rechercherParNom, filtrerParStatut, filtrerParPoste,
+// filtrerCombine — une seule fonction, paramètres optionnels
+// ─────────────────────────────────────────────────────────────
+export async function rechercherCandidats(filtres: {
+    nom?: string;
+    poste?: string;
+    statut?: string;
+}): Promise<Candidat[]> {
+    const params = new URLSearchParams();
+    Object.entries(filtres).forEach(([cle, val]) => {
+        if (val?.trim()) params.set(cle, val.trim());
     });
 
-    if (!response.ok) {
-        throw new Error("Erreur lors de la récupération des candidats");
-    }
-
+    const url = params.toString() ? `${BASE}?${params}` : BASE;
+    const response = await fetchAuth(url);
+    if (!response.ok) throw new Error("Erreur lors de la recherche");
     return response.json();
 }
 
 // ─────────────────────────────────────────────────────────────
 // ajouterCandidat()
-// Enregistre un nouveau candidat
 // ─────────────────────────────────────────────────────────────
 export async function ajouterCandidat(
-    donnee: Omit<Candidat, "id" | "date_candidature" | "created_at">
+    donnee: Omit<Candidat, "id" | "created_at">
 ): Promise<Candidat> {
-    const response = await fetch(API_URL, {
+    const response = await fetchAuth(BASE, {
         method: "POST",
-        headers: headersAvecToken(),
         body: JSON.stringify(donnee)
     });
-
     if (!response.ok) {
         const erreur = await response.json();
-        throw new Error(erreur.message || "Erreur lors de l'ajout du candidat");
+        throw new Error(erreur.message || "Erreur lors de l'ajout");
     }
-
     return response.json();
 }
 
 // ─────────────────────────────────────────────────────────────
 // modifierCandidat()
-// Met à jour les informations et/ou le statut d'un candidat
 // ─────────────────────────────────────────────────────────────
 export async function modifierCandidat(
     id: number,
-    donnee: Omit<Candidat, "id" | "date_candidature" | "created_at">
+    donnee: Omit<Candidat, "id" | "created_at">
 ): Promise<Candidat> {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await fetchAuth(`${BASE}/${id}`, {
         method: "PUT",
-        headers: headersAvecToken(),
         body: JSON.stringify(donnee)
     });
-
     if (!response.ok) {
         const erreur = await response.json();
         throw new Error(erreur.message || "Erreur lors de la modification");
     }
-
     return response.json();
 }
 
 // ─────────────────────────────────────────────────────────────
 // supprimerCandidat()
-// Supprime un candidat par son id
 // ─────────────────────────────────────────────────────────────
 export async function supprimerCandidat(id: number): Promise<void> {
-    const response = await fetch(`${API_URL}/${id}`, {
-        method: "DELETE",
-        headers: headersAvecToken()
-    });
-
+    const response = await fetchAuth(`${BASE}/${id}`, { method: "DELETE" });
     if (!response.ok) {
         const erreur = await response.json();
         throw new Error(erreur.message || "Erreur lors de la suppression");
@@ -94,7 +84,6 @@ export async function supprimerCandidat(id: number): Promise<void> {
 
 // ─────────────────────────────────────────────────────────────
 // getStatistiques()
-// Récupère les compteurs pour le tableau de bord
 // ─────────────────────────────────────────────────────────────
 export async function getStatistiques(): Promise<{
     total: number;
@@ -102,100 +91,7 @@ export async function getStatistiques(): Promise<{
     retenus: number;
     non_retenus: number;
 }> {
-    const response = await fetch("http://localhost:5000/api/dashboard/statistiques", {
-        headers: headersAvecToken()
-    });
-
-    if (!response.ok) {
-        throw new Error("Erreur lors de la récupération des statistiques");
-    }
-
+    const response = await fetchAuth(`${API_URL}/api/dashboard/statistiques`);
+    if (!response.ok) throw new Error("Erreur lors de la récupération des statistiques");
     return response.json();
-}
-
-// ─────────────────────────────────────────────────────────────
-// rechercherParNom()
-// Appelle GET /api/candidats/recherche?nom=...
-// Retourne les candidats dont le nom contient la chaîne saisie
-// ─────────────────────────────────────────────────────────────
-export async function rechercherParNom(nom: string): Promise<Candidat[]> {
-    // encodeURIComponent protège les caractères spéciaux (espaces, accents)
-    const response = await fetch(`${API_URL}/recherche?nom=${encodeURIComponent(nom)}`, {
-        headers: headersAvecToken()
-    });
-
-    if (!response.ok) {
-        const erreur = await response.json();
-        throw new Error(erreur.message || "Erreur lors de la recherche");
-    }
-
-    return response.json();
-}
-
-// ─────────────────────────────────────────────────────────────
-// filtrerParStatut()
-// Appelle GET /api/candidats/statut/:statut
-// ─────────────────────────────────────────────────────────────
-export async function filtrerParStatut(statut: string): Promise<Candidat[]> {
-    const response = await fetch(`${API_URL}/statut/${encodeURIComponent(statut)}`, {
-        headers: headersAvecToken()
-    });
-
-    if (!response.ok) {
-        throw new Error("Erreur lors du filtrage par statut");
-    }
-
-    return response.json();
-}
-
-// ─────────────────────────────────────────────────────────────
-// filtrerParPoste()
-// Appelle GET /api/candidats/poste/:poste
-// ─────────────────────────────────────────────────────────────
-export async function filtrerParPoste(poste: string): Promise<Candidat[]> {
-    const response = await fetch(`${API_URL}/poste/${encodeURIComponent(poste)}`, {
-        headers: headersAvecToken()
-    });
-
-    if (!response.ok) {
-        throw new Error("Erreur lors du filtrage par poste");
-    }
-
-    return response.json();
-}
-
-// ─────────────────────────────────────────────────────────────
-// filtrerCombine()
-// Appelle GET /api/candidats/filtre?poste=...&statut=...
-// Filtre simultanément par poste ET par statut
-// ─────────────────────────────────────────────────────────────
-export async function filtrerCombine(poste: string, statut: string): Promise<Candidat[]> {
-    const params = new URLSearchParams({ poste, statut });
-    const response = await fetch(`${API_URL}/filtre?${params.toString()}`, {
-        headers: headersAvecToken()
-    });
-
-    if (!response.ok) {
-        throw new Error("Erreur lors du filtrage combiné");
-    }
-
-    return response.json();
-}
-
-// ─────────────────────────────────────────────────────────────
-// getTotal()
-// Appelle GET /api/candidats/total
-// Retourne uniquement le nombre total de candidats
-// ─────────────────────────────────────────────────────────────
-export async function getTotal(): Promise<number> {
-    const response = await fetch(`${API_URL}/total`, {
-        headers: headersAvecToken()
-    });
-
-    if (!response.ok) {
-        throw new Error("Erreur lors de la récupération du total");
-    }
-
-    const data = await response.json();
-    return data.total;
 }
